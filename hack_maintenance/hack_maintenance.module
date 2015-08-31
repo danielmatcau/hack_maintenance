@@ -1,0 +1,97 @@
+<?php
+
+define('SITEAPIKEY', 'No API Key yet');
+
+/**
+ * Implements hook_menu().
+ */
+function hack_maintenance_menu() {
+  // http://localhost/page_json/FOOBAR12345/17
+  $items['page_json/%/%'] = array(
+    'title' => 'JSON Node data',
+    'page callback' => 'hack_maintenance_json_output',
+    'page arguments' => array(1, 2),
+    'access callback' => 'hack_maintenance_access_callback',
+    'access arguments' => array(1, 2),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+/**
+ * Implements hook_form_alter().
+ */
+function hack_maintenance_form_alter(&$form, &$form_state, $form_id) {
+  // Add new field only if the form id is site information
+  if ($form_id == 'system_site_information_settings') {
+
+    // Add siteapikey new field
+    $form['siteapikey'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Site API Key'),
+      '#default_value' => variable_get('siteapikey', SITEAPIKEY),
+      '#description' => t("The site API key."),
+      '#weight' => -1,
+    );
+
+    // Change submit button text
+    $form['actions']['submit']['#value'] = t('Update Configuration');
+
+    // Add our custom submit
+    $form['actions']['submit']['#submit'][] = 'hack_maintenance_siteapi_submit';
+  }
+}
+
+/**
+ * Add our custom submit.
+ * @param $form
+ * @param $form_state
+ */
+function hack_maintenance_siteapi_submit($form, &$form_state) {
+  // Get the current siteapikey value
+  $current_siteapikey = variable_get('siteapikey');
+  if ($form_state['values']['siteapikey'] != SITEAPIKEY && $form_state['values']['siteapikey'] != $current_siteapikey) {
+    // Set new value for siteapikey field and print the appropiate message
+    variable_set('siteapikey', $form_state['values']['siteapikey']);
+    drupal_set_message(t('Your Site API Key was saved!'), 'status');
+  }
+}
+
+/**
+ * Page access callback.
+ */
+function hack_maintenance_access_callback($apikey, $node_id) {
+  // Check if siteapikey is set.
+  if ($apikey == variable_get('siteapikey') && is_numeric($node_id)) {
+    $node = node_load($node_id);
+    // Check if node type is page
+    if ($node->type == 'page') {
+      return TRUE;
+    }
+    return FALSE;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Return json data of a given node.
+ */
+function hack_maintenance_json_output($apikey, $node_id) {
+  $json = '';
+
+  // Load node and return json of the given node.
+  $node = node_load($node_id);
+  if ($node) {
+    $json = drupal_json_output($node);
+  }
+
+  return $json;
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function hack_maintenance_uninstall() {
+  variable_del('siteapikey');
+}

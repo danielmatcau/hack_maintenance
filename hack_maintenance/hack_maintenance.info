@@ -1,0 +1,4 @@
+name = Hack Maintenance
+description = Alter Maintenante
+core = 7.x
+package = Hack Maintenance
